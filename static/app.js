@@ -124,28 +124,34 @@ function validateColumnMapping() {
     const arrival = document.getElementById('arrival_col')?.value;
     const departure = document.getElementById('departure_col')?.value;
     
+    // Only run validation if we're on the column mapping page
     const submitBtn = document.querySelector('form button[type="submit"]');
-    
-    if (confirmation && arrival && departure) {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('btn-secondary');
-        submitBtn.classList.add('btn-primary');
-    } else {
-        submitBtn.disabled = true;
-        submitBtn.classList.remove('btn-primary');
-        submitBtn.classList.add('btn-secondary');
+    if (document.getElementById('confirmation_col') && document.getElementById('arrival_col') && document.getElementById('departure_col') && submitBtn) {
+        if (confirmation && arrival && departure) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-secondary');
+            submitBtn.classList.add('btn-primary');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('btn-primary');
+            submitBtn.classList.add('btn-secondary');
+        }
     }
 }
 
 // Initialize column mapping validation
 document.addEventListener('DOMContentLoaded', function() {
     const columnSelects = document.querySelectorAll('#confirmation_col, #arrival_col, #departure_col');
-    columnSelects.forEach(select => {
-        select.addEventListener('change', validateColumnMapping);
-    });
     
-    // Initial validation
-    validateColumnMapping();
+    // Only add validation if we're on the column mapping page
+    if (columnSelects.length > 0) {
+        columnSelects.forEach(select => {
+            select.addEventListener('change', validateColumnMapping);
+        });
+        
+        // Initial validation
+        validateColumnMapping();
+    }
 });
 
 // Utility functions for data tables
