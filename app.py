@@ -445,48 +445,56 @@ def create_overlay_pdf(data_rows, layout_config):
 def merge_pdf_overlay(template_path, overlay_buffer, output_path):
     """Merge overlay PDF with template PDF"""
     try:
+        # Ensure template_path is a string
+        if not isinstance(template_path, str):
+            raise ValueError(f"Template path must be a string, got {type(template_path)}")
+            
+        # Check if template file exists
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Template file not found: {template_path}")
+        
         # Reset buffer position to beginning
         overlay_buffer.seek(0)
         
-        # Create a temporary file for the overlay PDF
-        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_overlay:
-            temp_overlay.write(overlay_buffer.read())
-            temp_overlay_path = temp_overlay.name
+        # Create temporary file for overlay
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_overlay_file:
+            temp_overlay_file.write(overlay_buffer.read())
+            temp_overlay_path = temp_overlay_file.name
         
-        template_reader = pypdf.PdfReader(template_path)
-        overlay_reader = pypdf.PdfReader(temp_overlay_path)
-        writer = pypdf.PdfWriter()
-        
-        # Get the first page of template as base
-        if len(template_reader.pages) == 0:
-            raise ValueError("Template PDF has no pages")
+        try:
+            # Read both PDFs
+            template_reader = pypdf.PdfReader(template_path)
+            overlay_reader = pypdf.PdfReader(temp_overlay_path)
+            writer = pypdf.PdfWriter()
             
-        template_page = template_reader.pages[0]
-        
-        # Merge each overlay page with a copy of the template
-        for overlay_page in overlay_reader.pages:
-            # Create a fresh copy of the template page for each overlay
-            merged_page = pypdf.PageObject.create_blank_page(
-                width=template_page.mediabox.width,
-                height=template_page.mediabox.height
-            )
+            if len(template_reader.pages) == 0:
+                raise ValueError("Template PDF has no pages")
+                
+            template_page = template_reader.pages[0]
             
-            # First merge the template, then the overlay
-            merged_page.merge_page(template_page)
-            merged_page.merge_page(overlay_page)
-            writer.add_page(merged_page)
-        
-        # Write the final PDF
-        with open(output_path, 'wb') as output_file:
-            writer.write(output_file)
-        
-        # Clean up temporary file
-        os.unlink(temp_overlay_path)
-        
-        logging.info(f"Successfully created merged PDF: {output_path}")
+            # Merge each overlay page with the template
+            for overlay_page in overlay_reader.pages:
+                # Create a copy of the template page
+                merged_page = template_page
+                # Merge the overlay on top
+                merged_page.merge_page(overlay_page)
+                writer.add_page(merged_page)
+            
+            # Write the final PDF
+            with open(output_path, 'wb') as output_file:
+                writer.write(output_file)
+            
+            logging.info(f"Successfully created merged PDF: {output_path}")
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_overlay_path):
+                os.unlink(temp_overlay_path)
         
     except Exception as e:
         logging.error(f"Error merging PDFs: {e}")
+        import traceback
+        logging.error(f"Full traceback: {traceback.format_exc()}")
         raise
 
 # Flask routes
@@ -647,6 +655,12 @@ def generate_pdf():
         output_filename = f"Parking_Passes_{datetime.now().strftime('%Y-%m-%d')}.pdf"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
         template_path = os.path.join('static', 'parking_pass_template.pdf')
+        
+        # Log debug info
+        logging.info(f"Template path: {template_path}")
+        logging.info(f"Template exists: {os.path.exists(template_path)}")
+        logging.info(f"Output path: {output_path}")
+        logging.info(f"Overlay buffer type: {type(overlay_buffer)}")
         
         # Merge overlay with template
         merge_pdf_overlay(template_path, overlay_buffer, output_path)
