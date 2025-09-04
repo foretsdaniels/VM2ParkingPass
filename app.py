@@ -426,15 +426,11 @@ def create_overlay_pdf(data_rows, layout_config):
             
             qr_img = generate_qr_code(qr_content, qr_config['size_px'])
             
-            # Convert PIL image to reportlab image
-            img_buffer = io.BytesIO()
-            qr_img.save(img_buffer, format='PNG')
-            img_buffer.seek(0)
-            
+            # Draw PIL image directly (ReportLab supports PIL images)
             qr_x = origin_x + qr_config['offset'][0]
             qr_y = origin_y - qr_config['offset'][1] - qr_config['size_px']
             
-            c.drawImage(img_buffer, qr_x, qr_y, 
+            c.drawImage(qr_img, qr_x, qr_y, 
                        width=qr_config['size_px'], 
                        height=qr_config['size_px'])
     
