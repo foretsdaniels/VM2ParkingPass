@@ -1,0 +1,45 @@
+# PDF Layout Configuration for Parking Passes
+page:
+  dpi: 72
+  width: 612  # 8.5 inches * 72 dpi
+  height: 792 # 11 inches * 72 dpi
+  
+  panels:
+    top:
+      origin: [50, 100]  # x, y from top-left
+      height: 300
+    bottom:
+      origin: [50, 450]  # x, y from top-left  
+      height: 300
+
+fields:
+  confirmation:
+    offset: [20, 50]   # x, y offset from panel origin
+    font_size: 16
+    font: "Helvetica-Bold"
+    color: "black"
+    
+  date:
+    offset: [20, 80]   # x, y offset from panel origin
+    font_size: 14
+    font: "Helvetica"
+    color: "black"
+    
+  nights:
+    offset: [20, 110]  # x, y offset from panel origin
+    font_size: 14
+    font: "Helvetica"
+    color: "black"
+
+qr:
+  content_template: "CONF={confirmation};ARR={arrival};NIGHTS={nights}"
+  size_px: 100
+  offset: [300, 30]   # x, y offset from panel origin
+  border: 2
+  error_correction: "M"  # L, M, Q, H
+  
+# Alternative QR content templates (uncomment to use)
+# qr:
+#   content_template: "https://bucc-pass/?conf={confirmation}&arr={arrival}&nights={nights}"
+#   size_px: 120
+#   offset: [350, 30]

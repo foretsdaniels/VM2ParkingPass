@@ -1,0 +1,46 @@
+# Visual Matrix PMS Column Mapping Configuration
+columns:
+  confirmation:
+    - "Conf"
+    - "Conf #"
+    - "Confirmation"
+    - "Conf:"
+    - "Confirmation #"
+    - "Confirmation Number"
+  arrival:
+    - "Arrive"
+    - "Arrival"
+    - "Check-In"
+    - "Check In"
+    - "Arrival Date"
+    - "Checkin"
+    - "Check-in Date"
+  departure:
+    - "Departs"
+    - "Departure"
+    - "Check-Out"
+    - "Check Out"
+    - "Departure Date"
+    - "Checkout"
+    - "Check-out Date"
+
+# Date format detection (tried in order)
+date_format_in:
+  - "%m/%d/%y"
+  - "%m/%d/%Y"
+  - "%Y-%m-%d"
+  - "%d/%m/%Y"
+  - "%m-%d-%Y"
+  - "%Y/%m/%d"
+
+# Output date format
+date_format_out: "%m/%d/%Y"
+
+# Regex fallback for confirmation numbers
+confirmation_regex: "Conf[:#]?\\s*(\\d+)"
+
+# Data validation settings
+validation:
+  min_nights: 1
+  max_nights: 365
+  allow_past_dates: false
