@@ -111,20 +111,131 @@ def load_table(filepath):
                 raise ValueError("Could not decode CSV file with any supported encoding")
                 
         elif file_ext in ['xls', 'xlsx']:
-            df = pd.read_excel(filepath, engine='xlrd' if file_ext == 'xls' else 'openpyxl')
+            # Try different header row positions for Excel files
+            df = None
+            engine = 'xlrd' if file_ext == 'xls' else 'openpyxl'
+            
+            # First, read the raw data to find the header row
+            raw_df = pd.read_excel(filepath, engine=engine, header=None)
+            logging.info(f"Raw Excel data shape: {raw_df.shape}")
+            
+            # Look for the header row by finding rows with meaningful header text
+            header_row = 0
+            for i in range(len(raw_df)):  # Check all rows
+                row_data = raw_df.iloc[i].astype(str).str.strip()
+                non_empty_vals = [val for val in row_data if val and val != 'nan' and val != 'NaN' and val != '']
+                
+                # If this row has multiple non-empty values, check if it's headers
+                if len(non_empty_vals) >= 5:  # Need at least 5 columns for headers
+                    row_text = ' '.join(non_empty_vals).lower()
+                    header_keywords = ['guest', 'name', 'status', 'arrive', 'depart', 'room', 'rate', 'type']
+                    
+                    keyword_matches = sum(1 for keyword in header_keywords if keyword in row_text)
+                    
+                    if keyword_matches >= 3:  # Need at least 3 header keywords
+                        header_row = i
+                        logging.info(f"Found header row at index {i}: {non_empty_vals[:10]}")
+                        break
+            
+            # Load with the detected header row
+            df = pd.read_excel(filepath, engine=engine, header=header_row)
+            
+            # If we still have unnamed columns, try to use the data from a different row as headers
+            if all(col.startswith('Unnamed:') for col in df.columns if isinstance(col, str)):
+                logging.info("All columns are unnamed, trying alternative approaches")
+                
+                # Look for a row that could serve as headers
+                for i in range(min(5, len(df))):
+                    potential_headers = df.iloc[i].astype(str).str.strip()
+                    if len(potential_headers.dropna()) >= 3:
+                        # Use this row as headers and drop it from data
+                        df.columns = potential_headers
+                        df = df.drop(df.index[i]).reset_index(drop=True)
+                        logging.info(f"Used row {i} as headers")
+                        break
+            
             logging.info(f"Successfully loaded {file_ext.upper()} file")
         else:
             raise ValueError(f"Unsupported file type: {file_ext}")
             
         # Clean column names - strip whitespace and normalize
-        df.columns = df.columns.str.strip()
+        df.columns = df.columns.astype(str).str.strip()
         
-        logging.info(f"Loaded {len(df)} rows with columns: {list(df.columns)}")
+        # Remove completely empty columns
+        df = df.dropna(axis=1, how='all')
+        
+        # Remove completely empty rows
+        df = df.dropna(axis=0, how='all').reset_index(drop=True)
+        
+        # Special processing for Visual Matrix format
+        if file_ext in ['xls', 'xlsx'] and any('Guest' in str(col) for col in df.columns):
+            df = process_visual_matrix_format(df)
+        
+        logging.info(f"Final processed data: {len(df)} rows with columns: {list(df.columns)}")
         return df
         
     except Exception as e:
         logging.error(f"Error loading file {filepath}: {str(e)}")
         raise
+
+def process_visual_matrix_format(df):
+    """Process Visual Matrix specific format where confirmation numbers are on separate rows"""
+    try:
+        processed_rows = []
+        
+        for i, row in df.iterrows():
+            # Check if this is a guest data row (has guest name)
+            guest_name_col = None
+            for col in df.columns:
+                if 'Guest' in str(col) or 'Name' in str(col):
+                    guest_name_col = col
+                    break
+            
+            if guest_name_col and pd.notna(row[guest_name_col]) and ',' in str(row[guest_name_col]):
+                # This is a guest row, look for confirmation number in the next row
+                guest_data = row.copy()
+                
+                # Look ahead for confirmation number in next few rows
+                conf_num = None
+                for look_ahead in range(1, 4):  # Check next 3 rows
+                    if i + look_ahead < len(df):
+                        next_row = df.iloc[i + look_ahead]
+                        # Convert all values to strings and look for Conf:
+                        row_values = [str(val).strip() for val in next_row if pd.notna(val)]
+                        
+                        for j, val in enumerate(row_values):
+                            if val == 'Conf:' and j + 1 < len(row_values):
+                                # Next value should be the confirmation number
+                                potential_conf = row_values[j + 1].strip()
+                                # Remove any non-alphanumeric characters for validation
+                                clean_conf = ''.join(c for c in potential_conf if c.isalnum() or c in '-')
+                                if clean_conf and len(clean_conf) >= 3:  # Must be at least 3 chars
+                                    conf_num = clean_conf
+                                    logging.info(f"Found confirmation number: {conf_num}")
+                                    break
+                        
+                        if conf_num:
+                            break
+                
+                # Add confirmation number to guest data
+                if conf_num:
+                    guest_data['Confirmation'] = conf_num
+                else:
+                    guest_data['Confirmation'] = 'Not Found'
+                
+                processed_rows.append(guest_data)
+        
+        if processed_rows:
+            result_df = pd.DataFrame(processed_rows)
+            logging.info(f"Processed Visual Matrix format: {len(result_df)} guest records")
+            return result_df
+        else:
+            logging.warning("No guest records found in Visual Matrix format")
+            return df
+            
+    except Exception as e:
+        logging.error(f"Error processing Visual Matrix format: {e}")
+        return df
 
 def auto_map_columns(df, config):
     """Automatically map DataFrame columns to required fields"""
