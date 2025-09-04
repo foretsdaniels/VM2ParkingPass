@@ -9,25 +9,25 @@ page:
       origin: [0, 0]     # x, y from top-left
       height: 396        # Half page height
     bottom:
-      origin: [0, 396]   # x, y from top-left  
+      origin: [0, 364]   # x, y from top-left  
       height: 396        # Half page height
 
 fields:
   confirmation:
-    offset: [120, 50]   # x, y offset from panel origin (adjusted for better placement)
+    offset: [152,335]   # x, y offset from panel origin (adjusted for better placement)
     font_size: 12
     font: "Helvetica"
     color: "black"
     
   date:
-    offset: [280, 50]   # x, y offset from panel origin (adjusted for better placement)
-    font_size: 12
+    offset: [280, 335]   # x, y offset from panel origin (adjusted for better placement)
+    font_size: 13
     font: "Helvetica"
     color: "black"
     
   nights:
-    offset: [450, 50]   # x, y offset from panel origin (adjusted for better placement)
-    font_size: 12
+    offset: [460, 335]   # x, y offset from panel origin (adjusted for better placement)
+    font_size: 14
     font: "Helvetica"
     color: "black"
 
