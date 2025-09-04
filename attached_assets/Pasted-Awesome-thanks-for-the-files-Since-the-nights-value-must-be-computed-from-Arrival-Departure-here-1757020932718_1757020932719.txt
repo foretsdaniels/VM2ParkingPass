@@ -1,0 +1,140 @@
+Awesome—thanks for the files. Since the “nights” value must be computed from Arrival/Departure, here’s a tight, developer-ready Replit prompt that covers messy exports, supports your XLS/CSV input, and overlays onto your 2-up parking-pass PDF template.
+
+⸻
+
+Replit Project Spec — Visual Matrix → Parking Pass Generator
+
+Goal
+
+Build a small Python web app (Flask or FastAPI + simple HTML UI) that ingests Visual Matrix PMS arrivals exports (CSV or XLS), extracts check-in date, departure date, confirmation number, computes number of nights, and renders print-ready parking passes onto my provided two-up PDF template. Each pass includes:
+	•	Confirmation #
+	•	Check-in date
+	•	Number of nights
+	•	A QR code (content is configurable)
+
+The template has two identical halves per page labeled “Registered Guest — Confirmation # / Date / Days Staying,” which the app should fill (top and bottom).  ￼
+
+⸻
+
+Inputs
+	•	File: Visual Matrix arrivals export (CSV or XLS).
+	•	Template: Provided PDF (new parking pass.pdf) with two passes per 8.5×11 page (no scaling).
+	•	Config (YAML): field mapping, date format, fonts, and coordinates.
+
+Messy Data Handling (must)
+
+Visual Matrix reports can be inconsistent. App must:
+	•	Accept CSV or legacy .XLS (use pandas + xlrd for .xls).
+	•	Column names may vary; provide a mapping UI or a config.yml like:
+
+columns:
+  confirmation: ["Conf", "Conf #", "Confirmation", "Conf:"]
+  arrival: ["Arrive", "Arrival", "Check-In", "Check In"]
+  departure: ["Departs", "Departure", "Check-Out", "Check Out"]
+date_format_in: ["%m/%d/%y", "%m/%d/%Y"]   # try in order
+date_format_out: "%m/%d/%Y"
+
+
+	•	If confirmation number appears on a separate line or embedded text, allow regex fallback:
+	•	r"Conf[:#]?\s*(\d+)"
+
+⸻
+
+Data Rules
+	•	Nights = (DepartureDate - ArrivalDate).days
+	•	Reject negative/zero nights with a visible error list.
+	•	Check-in date prints as date_format_out (configurable).
+	•	Sorting: Allow user to sort by Arrival, Room, or Last Name before rendering.
+	•	Filter: Optional date filter (only show today’s arrivals).
+
+⸻
+
+Output
+	•	PDF overlay: Stamp text + QR onto new parking pass.pdf without modifying artwork:
+	•	Use pypdf (read template) + reportlab (draw overlay) per page.
+	•	Two passes per page: top and bottom panels with independent coordinate offsets.
+	•	File name: Parking_Passes_<YYYY-MM-DD>.pdf
+	•	Preview: Simple HTML preview (first 2 pages is fine) and Download button.
+
+⸻
+
+Placement & Styling (configurable)
+
+Provide a layout.yml with absolute positions (points) from top-left of each panel:
+
+page:
+  dpi: 72
+  panels:
+    top:
+      origin: [x0_top, y0_top]
+    bottom:
+      origin: [x0_bottom, y0_bottom]
+fields:
+  confirmation:
+    offset: [x_conf, y_conf]
+    font_size: 14
+  date:
+    offset: [x_date, y_date]
+    font_size: 14
+  nights:
+    offset: [x_nights, y_nights]
+    font_size: 14
+qr:
+  content_template: "CONF={confirmation};ARR={arrival};NIGHTS={nights}"
+  size_px: 140
+  offset: [x_qr, y_qr]
+  border: 2
+
+Dev note: Start with rough coordinates and make them adjustable via the UI sliders; save back to layout.yml.
+
+⸻
+
+QR Code
+	•	Library: qrcode + Pillow
+	•	Content uses qr.content_template (e.g., CONF=12345;ARR=2025-08-31;NIGHTS=2).
+	•	Option to switch to a URL like https://bucc-pass/?conf={confirmation} later.
+
+⸻
+
+UX
+	•	Drag-and-drop CSV/XLS.
+	•	Show column-mapping step (auto-guess; user can correct).
+	•	Show row table with computed Nights; allow exclude/include.
+	•	Buttons: Generate PDF, Download, Re-map columns.
+
+⸻
+
+Validation & Errors
+	•	Show a non-blocking error table for rows missing dates or confirmation numbers.
+	•	Log parsing decisions (which regex matched, which column mapping was used).
+
+⸻
+
+Tech Stack & Dependencies
+	•	Python 3.11+
+	•	pandas, xlrd (for .xls), pypdf, reportlab, qrcode, Pillow, python-dateutil, Flask or FastAPI (+ uvicorn)
+	•	Keep everything in requirements.txt.
+
+⸻
+
+Key Functions (sketch)
+
+def load_table(file) -> pd.DataFrame: ...
+def auto_map_columns(df, config) -> dict: ...
+def compute_nights(arrival, departure) -> int: ...
+def validate_rows(df) -> list[dict]: ...
+def render_passes(df, template_pdf, layout_cfg, out_pdf_path): ...
+
+
+⸻
+
+Acceptance Criteria
+	•	I can upload either a CSV or XLS from Visual Matrix.
+	•	I can correct the column mapping if auto-mapping is wrong.
+	•	The app computes Nights from arrival/departure and shows it in the grid.
+	•	The resulting PDF overlays text + QR in the correct spots on both top and bottom passes per page of my template.
+	•	Output prints edge-to-edge with no scaling artifacts (respect template dimensions).
+
+⸻
+
+If you want, I can also deliver a starter repo (app skeleton + config files + fake sample rows) so you can drop it straight into Replit and tweak the coordinates.
