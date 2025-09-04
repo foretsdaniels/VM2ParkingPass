@@ -426,13 +426,22 @@ def create_overlay_pdf(data_rows, layout_config):
             
             qr_img = generate_qr_code(qr_content, qr_config['size_px'])
             
-            # Draw PIL image directly (ReportLab supports PIL images)
-            qr_x = origin_x + qr_config['offset'][0]
-            qr_y = origin_y - qr_config['offset'][1] - qr_config['size_px']
+            # Save QR code to temporary file for ReportLab
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_qr:
+                qr_img.save(temp_qr.name, format='PNG')
+                temp_qr_path = temp_qr.name
             
-            c.drawImage(qr_img, qr_x, qr_y, 
-                       width=qr_config['size_px'], 
-                       height=qr_config['size_px'])
+            try:
+                qr_x = origin_x + qr_config['offset'][0]
+                qr_y = origin_y - qr_config['offset'][1] - qr_config['size_px']
+                
+                c.drawImage(temp_qr_path, qr_x, qr_y, 
+                           width=qr_config['size_px'], 
+                           height=qr_config['size_px'])
+            finally:
+                # Clean up temporary QR file
+                if os.path.exists(temp_qr_path):
+                    os.unlink(temp_qr_path)
     
     c.save()
     buffer.seek(0)
