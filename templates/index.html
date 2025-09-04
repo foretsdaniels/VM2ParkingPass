@@ -124,9 +124,17 @@
                                             <option value="{{ col }}" 
                                                     {{ 'selected' if current_mapping.get('confirmation') == col else '' }}>
                                                 {{ col }}
+                                                {% if column_previews and column_previews.get(col) %}
+                                                    - Preview: {{ column_previews[col][:2]|join(', ') }}{% if column_previews[col]|length > 2 %}...{% endif %}
+                                                {% endif %}
                                             </option>
                                         {% endfor %}
                                     </select>
+                                    {% if column_previews %}
+                                    <div class="form-text" id="confirmationPreview">
+                                        <small>Preview will appear here when you select a column</small>
+                                    </div>
+                                    {% endif %}
                                 </div>
                                 
                                 <div class="col-md-4 mb-3">
@@ -140,9 +148,17 @@
                                             <option value="{{ col }}" 
                                                     {{ 'selected' if current_mapping.get('arrival') == col else '' }}>
                                                 {{ col }}
+                                                {% if column_previews and column_previews.get(col) %}
+                                                    - Preview: {{ column_previews[col][:2]|join(', ') }}{% if column_previews[col]|length > 2 %}...{% endif %}
+                                                {% endif %}
                                             </option>
                                         {% endfor %}
                                     </select>
+                                    {% if column_previews %}
+                                    <div class="form-text" id="arrivalPreview">
+                                        <small>Preview will appear here when you select a column</small>
+                                    </div>
+                                    {% endif %}
                                 </div>
                                 
                                 <div class="col-md-4 mb-3">
@@ -156,9 +172,17 @@
                                             <option value="{{ col }}" 
                                                     {{ 'selected' if current_mapping.get('departure') == col else '' }}>
                                                 {{ col }}
+                                                {% if column_previews and column_previews.get(col) %}
+                                                    - Preview: {{ column_previews[col][:2]|join(', ') }}{% if column_previews[col]|length > 2 %}...{% endif %}
+                                                {% endif %}
                                             </option>
                                         {% endfor %}
                                     </select>
+                                    {% if column_previews %}
+                                    <div class="form-text" id="departurePreview">
+                                        <small>Preview will appear here when you select a column</small>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             
@@ -182,5 +206,58 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
+    
+    {% if show_mapping and column_previews %}
+    <script>
+        // Column preview data passed from Flask
+        const columnPreviews = {{ column_previews|tojson }};
+        
+        // Function to update column preview
+        function updateColumnPreview(selectElement, previewElementId) {
+            const selectedColumn = selectElement.value;
+            const previewElement = document.getElementById(previewElementId);
+            
+            if (selectedColumn && columnPreviews[selectedColumn] && columnPreviews[selectedColumn].length > 0) {
+                const previewData = columnPreviews[selectedColumn].slice(0, 3);
+                previewElement.innerHTML = `
+                    <small><strong>Preview data:</strong> ${previewData.join(' • ')}</small>
+                `;
+            } else if (selectedColumn) {
+                previewElement.innerHTML = '<small><em>No preview data available</em></small>';
+            } else {
+                previewElement.innerHTML = '<small>Preview will appear here when you select a column</small>';
+            }
+        }
+        
+        // Add event listeners for column selection changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmationCol = document.getElementById('confirmation_col');
+            const arrivalCol = document.getElementById('arrival_col');
+            const departureCol = document.getElementById('departure_col');
+            
+            if (confirmationCol) {
+                confirmationCol.addEventListener('change', function() {
+                    updateColumnPreview(this, 'confirmationPreview');
+                });
+                // Update preview on page load if already selected
+                updateColumnPreview(confirmationCol, 'confirmationPreview');
+            }
+            
+            if (arrivalCol) {
+                arrivalCol.addEventListener('change', function() {
+                    updateColumnPreview(this, 'arrivalPreview');
+                });
+                updateColumnPreview(arrivalCol, 'arrivalPreview');
+            }
+            
+            if (departureCol) {
+                departureCol.addEventListener('change', function() {
+                    updateColumnPreview(this, 'departurePreview');
+                });
+                updateColumnPreview(departureCol, 'departurePreview');
+            }
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

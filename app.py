@@ -419,10 +419,27 @@ def column_mapping():
         flash('No file uploaded', 'error')
         return redirect(url_for('index'))
     
-    return render_template('index.html', 
-                         show_mapping=True,
-                         columns=session.get('columns', []),
-                         current_mapping=session.get('column_mapping', {}))
+    try:
+        # Load the file to get data preview
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], session['current_file'])
+        df = load_table(filepath)
+        
+        # Get preview data (first 3 non-empty rows for each column)
+        column_previews = {}
+        for col in df.columns:
+            # Get first 3 non-null, non-empty values
+            non_empty_values = df[col].dropna().astype(str).str.strip()
+            non_empty_values = non_empty_values[non_empty_values != ''].head(3).tolist()
+            column_previews[col] = non_empty_values
+        
+        return render_template('index.html', 
+                             show_mapping=True,
+                             columns=session.get('columns', []),
+                             current_mapping=session.get('column_mapping', {}),
+                             column_previews=column_previews)
+    except Exception as e:
+        flash(f'Error loading file for preview: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
 @app.route('/process-data', methods=['POST'])
 def process_data():
