@@ -374,7 +374,7 @@ def generate_qr_code(content, size=100):
     return qr_img
 
 def create_overlay_pdf(data_rows, layout_config):
-    """Create PDF overlay with text and QR codes"""
+    """Create PDF overlay with text and QR codes for parking passes"""
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
@@ -392,29 +392,29 @@ def create_overlay_pdf(data_rows, layout_config):
             panel_config = layout_config['page']['panels'][panel_name]
             origin_x, origin_y = panel_config['origin']
             
-            # Convert from top-left to bottom-left coordinate system
+            # Convert from top-left to bottom-left coordinate system for ReportLab
             origin_y = page_height - origin_y
             
-            # Draw confirmation number
+            # Draw confirmation number (fill in the blank after "Confirmation #")
             conf_config = layout_config['fields']['confirmation']
             conf_x = origin_x + conf_config['offset'][0]
             conf_y = origin_y - conf_config['offset'][1]
-            c.setFont("Helvetica-Bold", conf_config['font_size'])
-            c.drawString(conf_x, conf_y, f"Conf #: {row_data['confirmation']}")
+            c.setFont("Helvetica", conf_config['font_size'])
+            c.drawString(conf_x, conf_y, str(row_data['confirmation']))
             
-            # Draw date
+            # Draw date (fill in the blank after "Date")
             date_config = layout_config['fields']['date']
             date_x = origin_x + date_config['offset'][0]
             date_y = origin_y - date_config['offset'][1]
             c.setFont("Helvetica", date_config['font_size'])
-            c.drawString(date_x, date_y, f"Date: {row_data['arrival']}")
+            c.drawString(date_x, date_y, str(row_data['arrival']))
             
-            # Draw nights
+            # Draw nights (fill in the blank after "Days Staying")
             nights_config = layout_config['fields']['nights']
             nights_x = origin_x + nights_config['offset'][0]
             nights_y = origin_y - nights_config['offset'][1]
             c.setFont("Helvetica", nights_config['font_size'])
-            c.drawString(nights_x, nights_y, f"Nights: {row_data['nights']}")
+            c.drawString(nights_x, nights_y, str(row_data['nights']))
             
             # Generate and draw QR code
             qr_config = layout_config['qr']
@@ -445,6 +445,9 @@ def create_overlay_pdf(data_rows, layout_config):
 def merge_pdf_overlay(template_path, overlay_buffer, output_path):
     """Merge overlay PDF with template PDF"""
     try:
+        # Reset buffer position to beginning
+        overlay_buffer.seek(0)
+        
         # Create a temporary file for the overlay PDF
         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_overlay:
             temp_overlay.write(overlay_buffer.read())
@@ -455,12 +458,21 @@ def merge_pdf_overlay(template_path, overlay_buffer, output_path):
         writer = pypdf.PdfWriter()
         
         # Get the first page of template as base
+        if len(template_reader.pages) == 0:
+            raise ValueError("Template PDF has no pages")
+            
         template_page = template_reader.pages[0]
         
-        # Merge each overlay page with the template
+        # Merge each overlay page with a copy of the template
         for overlay_page in overlay_reader.pages:
-            # Create a copy of the template page
-            merged_page = template_page
+            # Create a fresh copy of the template page for each overlay
+            merged_page = pypdf.PageObject.create_blank_page(
+                width=template_page.mediabox.width,
+                height=template_page.mediabox.height
+            )
+            
+            # First merge the template, then the overlay
+            merged_page.merge_page(template_page)
             merged_page.merge_page(overlay_page)
             writer.add_page(merged_page)
         
@@ -631,14 +643,13 @@ def generate_pdf():
         # Create overlay PDF
         overlay_buffer = create_overlay_pdf(valid_rows, layout_config)
         
-        # Check if we have a template PDF (for now, create a simple PDF)
+        # Generate final PDF with template
         output_filename = f"Parking_Passes_{datetime.now().strftime('%Y-%m-%d')}.pdf"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+        template_path = os.path.join('static', 'parking_pass_template.pdf')
         
-        # For now, just save the overlay as the final PDF
-        # In a real implementation, you would merge with the template
-        with open(output_path, 'wb') as f:
-            f.write(overlay_buffer.read())
+        # Merge overlay with template
+        merge_pdf_overlay(template_path, overlay_buffer, output_path)
         
         flash(f'PDF generated successfully: {len(valid_rows)} passes created', 'success')
         

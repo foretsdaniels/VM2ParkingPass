@@ -6,40 +6,34 @@ page:
   
   panels:
     top:
-      origin: [50, 100]  # x, y from top-left
-      height: 300
+      origin: [0, 0]     # x, y from top-left
+      height: 396        # Half page height
     bottom:
-      origin: [50, 450]  # x, y from top-left  
-      height: 300
+      origin: [0, 396]   # x, y from top-left  
+      height: 396        # Half page height
 
 fields:
   confirmation:
-    offset: [20, 50]   # x, y offset from panel origin
-    font_size: 16
-    font: "Helvetica-Bold"
+    offset: [200, 110]   # x, y offset from panel origin (after "Confirmation #")
+    font_size: 12
+    font: "Helvetica"
     color: "black"
     
   date:
-    offset: [20, 80]   # x, y offset from panel origin
-    font_size: 14
+    offset: [350, 110]   # x, y offset from panel origin (after "Date")
+    font_size: 12
     font: "Helvetica"
     color: "black"
     
   nights:
-    offset: [20, 110]  # x, y offset from panel origin
-    font_size: 14
+    offset: [500, 110]   # x, y offset from panel origin (after "Days Staying")
+    font_size: 12
     font: "Helvetica"
     color: "black"
 
 qr:
   content_template: "CONF={confirmation};ARR={arrival};NIGHTS={nights}"
-  size_px: 100
-  offset: [300, 30]   # x, y offset from panel origin
+  size_px: 80
+  offset: [450, 200]   # x, y offset from panel origin
   border: 2
   error_correction: "M"  # L, M, Q, H
-  
-# Alternative QR content templates (uncomment to use)
-# qr:
-#   content_template: "https://bucc-pass/?conf={confirmation}&arr={arrival}&nights={nights}"
-#   size_px: 120
-#   offset: [350, 30]
