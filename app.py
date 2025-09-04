@@ -648,10 +648,7 @@ def generate_pdf():
         # Load layout configuration
         layout_config = load_layout()
         
-        # Create overlay PDF
-        overlay_buffer = create_overlay_pdf(valid_rows, layout_config)
-        
-        # Generate final PDF with template
+        # Generate final PDF
         output_filename = f"Parking_Passes_{datetime.now().strftime('%Y-%m-%d')}.pdf"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
         template_path = os.path.join('static', 'parking_pass_template.pdf')
@@ -660,10 +657,29 @@ def generate_pdf():
         logging.info(f"Template path: {template_path}")
         logging.info(f"Template exists: {os.path.exists(template_path)}")
         logging.info(f"Output path: {output_path}")
-        logging.info(f"Overlay buffer type: {type(overlay_buffer)}")
         
-        # Merge overlay with template
-        merge_pdf_overlay(template_path, overlay_buffer, output_path)
+        # Try creating PDF directly without overlay for now
+        try:
+            logging.info("Creating overlay PDF...")
+            overlay_buffer = create_overlay_pdf(valid_rows, layout_config)
+            logging.info(f"Overlay created successfully, type: {type(overlay_buffer)}")
+            
+            # For debugging, save just the overlay first
+            with open(output_path.replace('.pdf', '_overlay_only.pdf'), 'wb') as f:
+                overlay_buffer.seek(0)
+                f.write(overlay_buffer.read())
+            logging.info("Overlay PDF saved for debugging")
+            
+            # Now try merging with template
+            logging.info("Starting template merge...")
+            merge_pdf_overlay(template_path, overlay_buffer, output_path)
+            logging.info("Template merge completed")
+            
+        except Exception as e:
+            logging.error(f"Error in PDF creation: {e}")
+            import traceback
+            logging.error(f"Traceback: {traceback.format_exc()}")
+            raise
         
         flash(f'PDF generated successfully: {len(valid_rows)} passes created', 'success')
         
