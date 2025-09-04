@@ -94,6 +94,26 @@
                         </p>
                     </div>
                 </div>
+
+                <!-- Template Preview Card -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-eye"></i>
+                            Template Preview
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Preview how text will be positioned on your parking pass template:</p>
+                        <a href="{{ url_for('preview_template') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-download"></i>
+                            Download Template Preview
+                        </a>
+                        <p class="text-muted small mt-2 mb-0">
+                            This generates a PDF showing where confirmation numbers, dates, and QR codes will appear with colored positioning guides.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
         

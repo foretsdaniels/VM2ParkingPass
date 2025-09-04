@@ -14,19 +14,19 @@ page:
 
 fields:
   confirmation:
-    offset: [200, 110]   # x, y offset from panel origin (after "Confirmation #")
+    offset: [120, 50]   # x, y offset from panel origin (adjusted for better placement)
     font_size: 12
     font: "Helvetica"
     color: "black"
     
   date:
-    offset: [350, 110]   # x, y offset from panel origin (after "Date")
+    offset: [280, 50]   # x, y offset from panel origin (adjusted for better placement)
     font_size: 12
     font: "Helvetica"
     color: "black"
     
   nights:
-    offset: [500, 110]   # x, y offset from panel origin (after "Days Staying")
+    offset: [450, 50]   # x, y offset from panel origin (adjusted for better placement)
     font_size: 12
     font: "Helvetica"
     color: "black"

@@ -373,6 +373,93 @@ def generate_qr_code(content, size=100):
     
     return qr_img
 
+def create_debug_overlay_pdf(data_rows, layout_config):
+    """Create PDF overlay with positioning guides for debugging"""
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    page_width, page_height = letter
+    rows_per_page = 2  # Two passes per page
+    
+    for page_num, start_idx in enumerate(range(0, len(data_rows), rows_per_page)):
+        if page_num > 0:
+            c.showPage()
+        
+        page_rows = data_rows[start_idx:start_idx + rows_per_page]
+        
+        for panel_idx, row_data in enumerate(page_rows):
+            panel_name = 'top' if panel_idx == 0 else 'bottom'
+            panel_config = layout_config['page']['panels'][panel_name]
+            origin_x, origin_y = panel_config['origin']
+            
+            # Convert from top-left to bottom-left coordinate system for ReportLab
+            origin_y = page_height - origin_y
+            
+            # Draw panel boundaries for reference
+            c.setStrokeColor("blue")
+            c.setLineWidth(1)
+            panel_height = panel_config['height']
+            c.rect(origin_x, origin_y - panel_height, page_width, panel_height, fill=0)
+            
+            # Draw text with red background for visibility
+            c.setFillColor("red")
+            c.setStrokeColor("red")
+            
+            # Confirmation number with positioning guide
+            conf_config = layout_config['fields']['confirmation']
+            conf_x = origin_x + conf_config['offset'][0]
+            conf_y = origin_y - conf_config['offset'][1]
+            confirmation_text = str(row_data['confirmation'])
+            
+            # Auto-size font
+            if len(confirmation_text) <= 6:
+                font_size = conf_config['font_size']
+            elif len(confirmation_text) <= 10:
+                font_size = conf_config['font_size'] - 1
+            else:
+                font_size = max(8, conf_config['font_size'] - 2)
+            
+            c.setFont("Helvetica", font_size)
+            c.drawString(conf_x, conf_y, confirmation_text)
+            
+            # Draw positioning dot
+            c.circle(conf_x, conf_y, 3, fill=1)
+            
+            # Date with positioning guide
+            c.setFillColor("green")
+            c.setStrokeColor("green")
+            date_config = layout_config['fields']['date']
+            date_x = origin_x + date_config['offset'][0]
+            date_y = origin_y - date_config['offset'][1]
+            c.setFont("Helvetica", date_config['font_size'])
+            c.drawString(date_x, date_y, str(row_data['arrival']))
+            c.circle(date_x, date_y, 3, fill=1)
+            
+            # Nights with positioning guide
+            c.setFillColor("purple")
+            c.setStrokeColor("purple")
+            nights_config = layout_config['fields']['nights']
+            nights_x = origin_x + nights_config['offset'][0]
+            nights_y = origin_y - nights_config['offset'][1]
+            c.setFont("Helvetica", nights_config['font_size'])
+            c.drawString(nights_x, nights_y, str(row_data['nights']))
+            c.circle(nights_x, nights_y, 3, fill=1)
+            
+            # QR code positioning guide
+            c.setFillColor("orange")
+            c.setStrokeColor("orange")
+            qr_config = layout_config['qr']
+            qr_x = origin_x + qr_config['offset'][0]
+            qr_y = origin_y - qr_config['offset'][1] - qr_config['size_px']
+            c.rect(qr_x, qr_y, qr_config['size_px'], qr_config['size_px'], fill=0)
+            
+            # Reset colors for next iteration
+            c.setFillColor("black")
+    
+    c.save()
+    buffer.seek(0)
+    return buffer
+
 def create_overlay_pdf(data_rows, layout_config):
     """Create PDF overlay with text and QR codes for parking passes"""
     buffer = io.BytesIO()
@@ -395,12 +482,22 @@ def create_overlay_pdf(data_rows, layout_config):
             # Convert from top-left to bottom-left coordinate system for ReportLab
             origin_y = page_height - origin_y
             
-            # Draw confirmation number (fill in the blank after "Confirmation #")
+            # Draw confirmation number with auto-sizing
             conf_config = layout_config['fields']['confirmation']
             conf_x = origin_x + conf_config['offset'][0]
             conf_y = origin_y - conf_config['offset'][1]
-            c.setFont("Helvetica", conf_config['font_size'])
-            c.drawString(conf_x, conf_y, str(row_data['confirmation']))
+            
+            # Auto-size font based on confirmation number length
+            confirmation_text = str(row_data['confirmation'])
+            if len(confirmation_text) <= 6:
+                font_size = conf_config['font_size']
+            elif len(confirmation_text) <= 10:
+                font_size = conf_config['font_size'] - 1
+            else:
+                font_size = max(8, conf_config['font_size'] - 2)  # Minimum font size of 8
+            
+            c.setFont("Helvetica", font_size)
+            c.drawString(conf_x, conf_y, confirmation_text)
             
             # Draw date (fill in the blank after "Date")
             date_config = layout_config['fields']['date']
@@ -663,19 +760,13 @@ def generate_pdf():
         logging.info(f"Template exists: {os.path.exists(template_path)}")
         logging.info(f"Output path: {output_path}")
         
-        # Try creating PDF directly without overlay for now
+        # Create overlay PDF and merge with template
         try:
             logging.info("Creating overlay PDF...")
             overlay_buffer = create_overlay_pdf(valid_rows, layout_config)
             logging.info(f"Overlay created successfully, type: {type(overlay_buffer)}")
             
-            # For debugging, save just the overlay first
-            with open(output_path.replace('.pdf', '_overlay_only.pdf'), 'wb') as f:
-                overlay_buffer.seek(0)
-                f.write(overlay_buffer.read())
-            logging.info("Overlay PDF saved for debugging")
-            
-            # Now try merging with template
+            # Merge with template
             logging.info("Starting template merge...")
             merge_pdf_overlay(template_path, overlay_buffer, output_path)
             logging.info("Template merge completed")
@@ -695,6 +786,50 @@ def generate_pdf():
         logging.error(f"Error generating PDF: {e}")
         flash(f'Error generating PDF: {str(e)}', 'error')
         return redirect(url_for('preview_data'))
+
+@app.route('/preview-template')
+def preview_template():
+    """Generate a debug PDF showing text positioning on template"""
+    try:
+        # Load layout configuration
+        layout_config = load_layout()
+        
+        # Create sample data for preview
+        sample_data = [
+            {
+                'confirmation': '125580',
+                'arrival': '9/15/2025',
+                'nights': 3
+            },
+            {
+                'confirmation': 'BDC-5998296341',  # Long confirmation number
+                'arrival': '9/20/2025', 
+                'nights': 7
+            }
+        ]
+        
+        # Create overlay with positioning guides
+        overlay_buffer = create_debug_overlay_pdf(sample_data, layout_config)
+        
+        # Generate final PDF with template
+        output_filename = f"Template_Preview_{datetime.now().strftime('%Y-%m-%d_%H%M')}.pdf"
+        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+        template_path = os.path.join('static', 'parking_pass_template.pdf')
+        
+        # Merge overlay with template
+        merge_pdf_overlay(template_path, overlay_buffer, output_path)
+        
+        flash('Template preview generated successfully!', 'success')
+        
+        # Return the PDF file for download
+        return send_file(output_path, as_attachment=True, download_name=output_filename)
+        
+    except Exception as e:
+        logging.error(f"Error generating template preview: {e}")
+        import traceback
+        logging.error(f"Traceback: {traceback.format_exc()}")
+        flash(f'Error generating template preview: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
 @app.route('/reset')
 def reset_session():
