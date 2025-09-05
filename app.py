@@ -15,6 +15,9 @@ import pypdf
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 import tempfile
+import time
+import threading
+from datetime import datetime, timedelta
 from dateutil import parser as date_parser
 
 # Initialize Flask app
@@ -544,6 +547,56 @@ def create_overlay_pdf(data_rows, layout_config):
     buffer.seek(0)
     return buffer
 
+def cleanup_old_files():
+    """Remove files older than 2 days from uploads and output directories"""
+    try:
+        cutoff_time = time.time() - (2 * 24 * 60 * 60)  # 2 days in seconds
+        
+        # Cleanup uploads directory
+        upload_dir = app.config['UPLOAD_FOLDER']
+        if os.path.exists(upload_dir):
+            for filename in os.listdir(upload_dir):
+                file_path = os.path.join(upload_dir, filename)
+                if os.path.isfile(file_path):
+                    file_age = os.path.getmtime(file_path)
+                    if file_age < cutoff_time:
+                        try:
+                            os.unlink(file_path)
+                            logging.info(f"Cleaned up old upload file: {filename}")
+                        except Exception as e:
+                            logging.warning(f"Failed to remove upload file {filename}: {e}")
+        
+        # Cleanup output directory
+        output_dir = app.config['OUTPUT_FOLDER']
+        if os.path.exists(output_dir):
+            for filename in os.listdir(output_dir):
+                file_path = os.path.join(output_dir, filename)
+                if os.path.isfile(file_path):
+                    file_age = os.path.getmtime(file_path)
+                    if file_age < cutoff_time:
+                        try:
+                            os.unlink(file_path)
+                            logging.info(f"Cleaned up old output file: {filename}")
+                        except Exception as e:
+                            logging.warning(f"Failed to remove output file {filename}: {e}")
+        
+        logging.info("File cleanup completed")
+        
+    except Exception as e:
+        logging.error(f"Error during file cleanup: {e}")
+
+def periodic_cleanup():
+    """Run cleanup every 24 hours"""
+    while True:
+        cleanup_old_files()
+        time.sleep(24 * 60 * 60)  # Sleep for 24 hours
+
+def start_cleanup_thread():
+    """Start the cleanup thread"""
+    cleanup_thread = threading.Thread(target=periodic_cleanup, daemon=True)
+    cleanup_thread.start()
+    logging.info("Started periodic file cleanup thread")
+
 def merge_pdf_overlay(template_path, overlay_buffer, output_path):
     """Merge overlay PDF with template PDF"""
     try:
@@ -837,6 +890,24 @@ def reset_session():
     session.clear()
     flash('Session reset. You can upload a new file.', 'info')
     return redirect(url_for('index'))
+
+# Initialize cleanup on app startup
+def initialize_cleanup():
+    """Initialize cleanup system"""
+    try:
+        logging.info("Initializing file cleanup system...")
+        
+        # Run initial cleanup
+        cleanup_old_files()
+        
+        # Start periodic cleanup thread
+        start_cleanup_thread()
+        
+    except Exception as e:
+        logging.error(f"Failed to initialize cleanup system: {e}")
+
+# Initialize cleanup when module is loaded
+initialize_cleanup()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

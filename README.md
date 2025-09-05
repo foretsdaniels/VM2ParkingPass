@@ -12,6 +12,7 @@ A Flask web application that processes Visual Matrix PMS (Property Management Sy
 - **Auto-sizing Text**: Automatically adjusts font size for variable-length confirmation numbers
 - **Template Preview**: Debug tool to visualize text positioning on your template
 - **Two-passes-per-page Layout**: Efficient printing with two identical passes per page
+- **Automatic File Cleanup**: Removes old uploaded files and generated PDFs after 2 days to save disk space
 
 ## Installation
 
@@ -259,12 +260,24 @@ parking-pass-generator/
 - Check that export contains standard Visual Matrix headers
 - Verify data starts after header rows
 
+### File Management
+
+The application automatically manages disk space by:
+- **Automatic Cleanup**: Removes files older than 2 days from uploads and output directories
+- **Periodic Maintenance**: Runs cleanup every 24 hours automatically
+- **Startup Cleanup**: Performs initial cleanup when the application starts
+
+**Cleanup Schedule:**
+- Upload files (CSV/Excel): Deleted after 2 days
+- Generated PDFs: Deleted after 2 days
+- Cleanup runs: Every 24 hours + on startup
+
 ### Performance Optimization
 
 For production use:
 - Use a production WSGI server like Gunicorn
 - Configure proper logging
-- Set up file cleanup for old uploads/outputs
+- Monitor disk space (automatic cleanup handles most cases)
 - Consider adding user authentication
 - Use a proper database (PostgreSQL recommended)
 
