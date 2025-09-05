@@ -813,6 +813,11 @@ def generate_pdf():
         logging.info(f"Template exists: {os.path.exists(template_path)}")
         logging.info(f"Output path: {output_path}")
         
+        # Debug data structure
+        logging.info(f"Number of valid_rows: {len(valid_rows)}")
+        for i, row in enumerate(valid_rows[:3]):  # Log first 3 rows for debugging
+            logging.info(f"Row {i}: confirmation={row.get('confirmation')}, arrival={row.get('arrival')}, nights={row.get('nights')}")
+        
         # Create overlay PDF and merge with template
         try:
             logging.info("Creating overlay PDF...")
