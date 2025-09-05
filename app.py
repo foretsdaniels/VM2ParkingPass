@@ -629,11 +629,12 @@ def merge_pdf_overlay(template_path, overlay_buffer, output_path):
             
             # Merge each overlay page with the template
             for overlay_page in overlay_reader.pages:
-                # Create a copy of the template page
-                merged_page = template_page
-                # Merge the overlay on top
-                merged_page.merge_page(overlay_page)
-                writer.add_page(merged_page)
+                # IMPORTANT: Must read template fresh for each page to avoid accumulation
+                template_reader_fresh = pypdf.PdfReader(template_path)
+                fresh_template_page = template_reader_fresh.pages[0]
+                # Merge the overlay on top of fresh template
+                fresh_template_page.merge_page(overlay_page)
+                writer.add_page(fresh_template_page)
             
             # Write the final PDF
             with open(output_path, 'wb') as output_file:
@@ -812,11 +813,6 @@ def generate_pdf():
         logging.info(f"Template path: {template_path}")
         logging.info(f"Template exists: {os.path.exists(template_path)}")
         logging.info(f"Output path: {output_path}")
-        
-        # Debug data structure
-        logging.info(f"Number of valid_rows: {len(valid_rows)}")
-        for i, row in enumerate(valid_rows[:3]):  # Log first 3 rows for debugging
-            logging.info(f"Row {i}: confirmation={row.get('confirmation')}, arrival={row.get('arrival')}, nights={row.get('nights')}")
         
         # Create overlay PDF and merge with template
         try:
